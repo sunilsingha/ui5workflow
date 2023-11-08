@@ -1,0 +1,92 @@
+_schema-version: "3.2"
+ID: ordersmanagement
+version: 0.0.2
+modules:
+- name: ordersmanagement-destination-content
+  type: com.sap.application.content
+  requires:
+  - name: ordersmanagement-destination-service
+    parameters:
+      content-target: true
+  - name: ordersmanagement_html_repo_host
+    parameters:
+      service-key:
+        name: ordersmanagement_html_repo_host-key
+  - name: uaa_ordersmanagement
+    parameters:
+      service-key:
+        name: uaa_ordersmanagement-key
+  parameters:
+    content:
+      subaccount:
+        destinations:
+        - Name: orderManagement_ordersmanagement_html_repo_host
+          ServiceInstanceName: ordersmanagement-html5-app-host-service
+          ServiceKeyName: ordersmanagement_html_repo_host-key
+          sap.cloud.service: orderManagement
+        - Authentication: OAuth2UserTokenExchange
+          Name: orderManagement_uaa_ordersmanagement
+          ServiceInstanceName: ordersmanagement-xsuaa-service
+          ServiceKeyName: uaa_ordersmanagement-key
+          sap.cloud.service: orderManagement
+        existing_destinations_policy: ignore
+  build-parameters:
+    no-source: true
+- name: ordersmanagement-app-content
+  type: com.sap.application.content
+  path: .
+  requires:
+  - name: ordersmanagement_html_repo_host
+    parameters:
+      content-target: true
+  build-parameters:
+    build-result: resources
+    requires:
+    - artifacts:
+      - changenamespaceworkflowuimodule.zip
+      name: changenamespaceworkflowuimodule
+      target-path: resources/
+- name: changenamespaceworkflowuimodule
+  type: html5
+  path: workflow-ui-module
+  build-parameters:
+    build-result: dist
+    builder: custom
+    commands:
+    - npm install
+    - npm run build:cf
+    supported-platforms: []
+resources:
+- name: ordersmanagement-destination-service
+  type: org.cloudfoundry.managed-service
+  parameters:
+    config:
+      HTML5Runtime_enabled: true
+      init_data:
+        subaccount:
+          destinations:
+          - Authentication: NoAuthentication
+            Name: ui5
+            ProxyType: Internet
+            Type: HTTP
+            URL: https://ui5.sap.com
+          existing_destinations_policy: update
+      version: 1.0.0
+    service: destination
+    service-name: ordersmanagement-destination-service
+    service-plan: lite
+- name: ordersmanagement_html_repo_host
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: html5-apps-repo
+    service-name: ordersmanagement-html5-app-host-service
+    service-plan: app-host
+- name: uaa_ordersmanagement
+  type: org.cloudfoundry.managed-service
+  parameters:
+    path: ./xs-security.json
+    service: xsuaa
+    service-name: ordersmanagement-xsuaa-service
+    service-plan: application
+parameters:
+  deploy_mode: html5-repo
